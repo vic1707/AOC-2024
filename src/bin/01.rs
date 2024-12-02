@@ -1,22 +1,20 @@
+#![feature(iter_array_chunks)]
+
 advent_of_code::solution!(1);
 
-fn split_in_vecs(input: &str) -> [Vec<usize>; 2] {
+fn split_in_vecs(input: &str) -> (Vec<usize>, Vec<usize>) {
     input
         .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(str::as_bytes)
-                .map(|n| n.iter().fold(0, |acc, &b| acc * 10 + usize::from(b - b'0')))
-        })
-        .fold([vec![], vec![]], |mut acc, mut l| {
-            acc[0].push(l.next().unwrap());
-            acc[1].push(l.next().unwrap());
-            acc
-        })
+        .flat_map(str::split_ascii_whitespace)
+        .map(str::as_bytes)
+        .map(|n| n.iter().fold(0, |acc, &b| acc * 10 + usize::from(b - b'0')))
+        .array_chunks::<2>()
+        .map(|[x, y]| (x, y))
+        .unzip()
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let [mut v1, mut v2] = split_in_vecs(input);
+    let (mut v1, mut v2) = split_in_vecs(input);
 
     v1.sort_unstable();
     v2.sort_unstable();
@@ -24,12 +22,19 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(v1.iter().zip(v2).fold(0, |acc, (x, y)| acc + x.abs_diff(y)))
 }
 
+static mut COUNTS: [u8; 99999] = [0; 99999];
 pub fn part_two(input: &str) -> Option<usize> {
-    let [v1, v2] = split_in_vecs(input);
+    let (v1, v2) = split_in_vecs(input);
+
+    for n in v2.into_iter() {
+        unsafe {
+            COUNTS[n] += 1;
+        }
+    }
 
     Some(
-        v1.iter()
-            .fold(0, |acc, n| acc + v2.iter().filter(|&c| n == c).count() * n),
+        v1.into_iter()
+            .fold(0, |acc, n| acc + n * usize::from(unsafe { COUNTS[n] })),
     )
 }
 
